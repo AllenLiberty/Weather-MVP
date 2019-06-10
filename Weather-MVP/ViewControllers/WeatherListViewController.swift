@@ -8,6 +8,7 @@
 
 import UIKit
 import SwiftLocation
+import Alamofire
 
 class WeatherListViewController: UIViewController {
 
@@ -19,10 +20,10 @@ class WeatherListViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         receiveData()
-        
         dataProvider.requestData("37.8267", longitude: "-122.4233") { (error) in
             print("Network Error: \(error)")
         }
+        listeningNetwork()
     }
     
     func receiveData(){
@@ -42,8 +43,7 @@ class WeatherListViewController: UIViewController {
             guard let strongSelf = self else {return}
             switch result {
             case .failure(let error):
-                debugPrint("Received error: \(error) the location was changed to Culver")
-                strongSelf.dataProvider.requestData("34.0273", longitude: "-118.3864", failure: nil)
+                debugPrint("Received error: \(error) ")
             case .success(let location):
                 strongSelf.dataProvider.requestData(String(location.coordinate.latitude), longitude: String(location.coordinate.longitude), failure: nil)
             }
@@ -63,5 +63,24 @@ extension WeatherListViewController:UITableViewDelegate{
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         guard let model = dataProvider.dailyList?[indexPath.row] else { return }
         performSegue(withIdentifier: "toWeatherDetail", sender: model)
+    }
+}
+
+// Network Changed
+extension WeatherListViewController{
+    func listeningNetwork(){
+        let net = NetworkReachabilityManager()
+        net?.startListening()
+        net?.listener = {[weak self] status in
+            if net?.isReachable ?? false {
+                switch status {
+                case .reachable(.ethernetOrWiFi), .reachable(.wwan):
+                    self?.dataProvider.requestData("37.8267", longitude: "-122.4233") { (error) in
+                        print("Network Error: \(error)")
+                    }
+                default: break
+                }
+            }
+        }
     }
 }
